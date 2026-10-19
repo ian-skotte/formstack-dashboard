@@ -77,6 +77,16 @@
     .secondary:hover { background: #f0f5f9; }
     .filter-status { min-height: 22px; margin: 12px 0 0; color: var(--muted); font-size: .88rem; }
     .filter-status.error { color: #9b2c2c; font-weight: 700; }
+    .comparison-controls { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .comparison-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
+    .comparison-head label { display: flex; align-items: center; gap: 8px; color: var(--navy); font-size: .9rem; font-weight: 780; }
+    .comparison-head input { min-height: auto; width: 18px; height: 18px; accent-color: var(--blue-dark); }
+    .comparison-note { margin: 0; color: var(--muted); font-size: .79rem; }
+    .comparison-grid { display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: end; }
+    .comparison-grid.is-visible { display: grid; }
+    .comparison-grid .field { max-width: 260px; }
+    .comparison-grid button { padding: 8px 12px; border: 1px solid #9fb3c8; border-radius: 9px; color: var(--navy); background: #fff; cursor: pointer; font-weight: 750; }
+    .comparison-grid button:hover { background: #f0f5f9; }
     .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
     .metric { padding: 16px 18px; }
     .metric-label { color: var(--muted); font-size: .79rem; font-weight: 760; text-transform: uppercase; letter-spacing: .045em; }
@@ -94,6 +104,13 @@
     .trend-chart .area { fill: rgba(23, 105, 170, .12); }
     .trend-chart .line { fill: none; stroke: var(--blue); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
     .trend-chart .point { fill: #fff; stroke: var(--blue); stroke-width: 2; }
+    .trend-chart .reference-area { fill: rgba(183, 121, 31, .10); }
+    .trend-chart .reference-line { fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 7 5; }
+    .trend-chart .reference-point { fill: #fff; stroke: var(--gold); stroke-width: 2; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 2px 0 8px 48px; color: var(--muted); font-size: .76rem; }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-swatch { display: inline-block; width: 20px; border-top: 3px solid var(--blue); }
+    .legend-swatch.reference { border-color: var(--gold); border-top-style: dashed; }
     .bar-list { display: flex; flex-direction: column; gap: 10px; padding-top: 7px; }
     .bar-row { display: grid; grid-template-columns: minmax(128px, 1fr) minmax(100px, 2fr) 62px; gap: 10px; align-items: center; }
     .bar-label { overflow: hidden; color: var(--ink); font-size: .83rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -116,6 +133,7 @@
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     @media (max-width: 1120px) {
       .control-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .comparison-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
     @media (max-width: 760px) {
       .page-shell { padding: 18px 12px 28px; }
@@ -125,10 +143,12 @@
       .chart-grid { grid-template-columns: 1fr; }
       .chart-panel.wide { grid-column: auto; }
       .control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .comparison-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .actions { grid-column: 1 / -1; }
     }
     @media (max-width: 480px) {
       .control-grid, .summary-grid { grid-template-columns: 1fr; }
+      .comparison-grid { grid-template-columns: 1fr; }
       .actions { grid-column: auto; }
       .bar-row { grid-template-columns: minmax(110px, 1fr) minmax(70px, 1.3fr) 52px; gap: 7px; }
       .bar-label { font-size: .76rem; }
@@ -159,6 +179,17 @@
         <div class="field"><label for="formFilter">Form</label><select id="formFilter"></select></div>
         <div class="field"><label for="searchFilter">Search</label><input id="searchFilter" type="search" placeholder="Organization, form, browser…" autocomplete="off"></div>
         <div class="actions"><button class="primary" id="exportBtn" type="button">Export CSV</button><button class="secondary" id="resetBtn" type="button">Reset</button></div>
+      </div>
+      <div class="comparison-controls">
+        <div class="comparison-head">
+          <label for="compareMode"><input id="compareMode" type="checkbox"> Compare with another period</label>
+          <p class="comparison-note">Entity, form, and search filters apply to both periods.</p>
+        </div>
+        <div class="comparison-grid" id="comparisonGrid">
+          <div class="field"><label for="referenceStartDate">Reference start date</label><input id="referenceStartDate" type="date"></div>
+          <div class="field"><label for="referenceEndDate">Reference end date</label><input id="referenceEndDate" type="date"></div>
+          <div class="field"><label for="previousPeriodBtn">Quick selection</label><button id="previousPeriodBtn" type="button">Use preceding period</button></div>
+        </div>
       </div>
       <p id="filterStatus" class="filter-status" aria-live="polite"></p>
     </section>
@@ -201,6 +232,11 @@
     const els = {
       start: document.getElementById('startDate'),
       end: document.getElementById('endDate'),
+      compareMode: document.getElementById('compareMode'),
+      comparisonGrid: document.getElementById('comparisonGrid'),
+      referenceStart: document.getElementById('referenceStartDate'),
+      referenceEnd: document.getElementById('referenceEndDate'),
+      previousPeriodBtn: document.getElementById('previousPeriodBtn'),
       entity: document.getElementById('entityFilter'),
       form: document.getElementById('formFilter'),
       search: document.getElementById('searchFilter'),
@@ -256,12 +292,27 @@
       return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     };
     const selectedDateBounds = () => ({ start: els.start.value, end: els.end.value });
+    const referenceDateBounds = () => ({ start: els.referenceStart.value, end: els.referenceEnd.value });
+    const dateOffset = (date, days) => {
+      const value = new Date(`${date}T12:00:00Z`);
+      value.setUTCDate(value.getUTCDate() + days);
+      return value.toISOString().slice(0, 10);
+    };
+    const inclusiveDays = (start, end) => start && end ? Math.round((new Date(`${end}T12:00:00Z`) - new Date(`${start}T12:00:00Z`)) / 86400000) + 1 : 0;
+    const metricStats = (rows) => {
+      const activeDays = new Set(rows.map(row => row.date)).size;
+      const organizations = new Set(rows.filter(row => row.organization !== 'Unspecified').map(row => row.organization)).size;
+      return { records: rows.length, activeDays, average: activeDays ? rows.length / activeDays : 0, organizations };
+    };
 
     function initializeFilters() {
       const dates = DATA.map(row => row.date).sort();
       const minDate = dates[0], maxDate = dates[dates.length - 1];
       els.start.min = minDate; els.start.max = maxDate; els.start.value = minDate;
       els.end.min = minDate; els.end.max = maxDate; els.end.value = maxDate;
+      els.referenceStart.min = minDate; els.referenceStart.max = maxDate;
+      els.referenceEnd.min = minDate; els.referenceEnd.max = maxDate;
+      els.referenceStart.value = minDate; els.referenceEnd.value = maxDate;
       els.periodBadge.textContent = `Source period: ${formatDate(minDate)}–${formatDate(maxDate)}`;
       appendOption(els.entity, '', 'All entities');
       countBy(DATA, 'entity').forEach(([value, count]) => appendOption(els.entity, value, `${value} (${fmtNumber(count)})`));
@@ -269,8 +320,8 @@
       countBy(DATA, 'form').forEach(([value, count]) => appendOption(els.form, value, `${value} (${fmtNumber(count)})`));
     }
 
-    function getFilteredRows() {
-      const { start, end } = selectedDateBounds();
+    function getFilteredRows(bounds = selectedDateBounds()) {
+      const { start, end } = bounds;
       const entity = els.entity.value;
       const form = els.form.value;
       const search = els.search.value.trim().toLowerCase();
@@ -285,39 +336,55 @@
       });
     }
 
-    function renderTrend(rows) {
-      if (!rows.length) { els.trendWrap.innerHTML = '<div class="empty">No records match the current filters.</div>'; return; }
+    function dailySeries(rows, bounds) {
       const byDate = new Map();
       rows.forEach(row => byDate.set(row.date, (byDate.get(row.date) || 0) + 1));
-      const dates = [...byDate.keys()].sort();
-      const values = dates.map(date => byDate.get(date));
+      const dates = [];
+      for (let date = bounds.start; date <= bounds.end; date = dateOffset(date, 1)) dates.push(date);
+      return { dates, values: dates.map(date => byDate.get(date) || 0) };
+    }
+
+    function renderTrend(rows, bounds, referenceRows = null, referenceBounds = null) {
+      const current = dailySeries(rows, bounds);
+      const reference = referenceRows && referenceBounds ? dailySeries(referenceRows, referenceBounds) : null;
+      if (!current.dates.length) { els.trendWrap.innerHTML = '<div class="empty">No dates are available for the current selection.</div>'; return; }
       const W = 1000, H = 270, left = 48, right = 18, top = 18, bottom = 38;
       const iw = W - left - right, ih = H - top - bottom;
-      const max = Math.max(...values, 1);
-      const x = i => left + (dates.length === 1 ? iw / 2 : i * iw / (dates.length - 1));
+      const max = Math.max(...current.values, ...(reference ? reference.values : []), 1);
+      const x = (i, length) => left + (length === 1 ? iw / 2 : i * iw / (length - 1));
       const y = v => top + ih - (v / max) * ih;
-      const linePoints = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-      const areaPoints = `${left},${top + ih} ${linePoints} ${left + iw},${top + ih}`;
+      const seriesPoints = series => series.values.map((v, i) => `${x(i, series.values.length).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      const currentPoints = seriesPoints(current);
+      const referencePoints = reference ? seriesPoints(reference) : '';
+      const areaPoints = (points, series) => `${left},${top + ih} ${points} ${x(series.values.length - 1, series.values.length)},${top + ih}`;
       const tickCount = 4;
-      const parts = [`<svg class="trend-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily activity records over time">`];
+      const parts = [`<svg class="trend-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily activity records over time${reference ? ', comparing the selected and reference periods' : ''}">`];
       for (let i = 0; i <= tickCount; i++) {
         const value = Math.round(max * (tickCount - i) / tickCount);
         const yy = top + ih * i / tickCount;
         parts.push(`<line class="gridline" x1="${left}" y1="${yy}" x2="${left + iw}" y2="${yy}"></line>`);
         parts.push(`<text x="${left - 9}" y="${yy + 4}" text-anchor="end">${fmtNumber(value)}</text>`);
       }
-      const labelStep = Math.max(1, Math.ceil(dates.length / 6));
-      dates.forEach((date, i) => {
-        if (i === 0 || i === dates.length - 1 || i % labelStep === 0) {
-          parts.push(`<text x="${x(i)}" y="${H - 12}" text-anchor="middle">${formatDate(date).slice(0, 5)}</text>`);
+      const labelSeries = reference && reference.values.length > current.values.length ? reference : current;
+      const labelStep = Math.max(1, Math.ceil(labelSeries.dates.length / 6));
+      labelSeries.dates.forEach((date, i) => {
+        if (i === 0 || i === labelSeries.dates.length - 1 || i % labelStep === 0) {
+          const label = reference ? `Day ${i + 1}` : formatDate(date).slice(0, 5);
+          parts.push(`<text x="${x(i, labelSeries.dates.length)}" y="${H - 12}" text-anchor="middle">${label}</text>`);
         }
       });
-      parts.push(`<polygon class="area" points="${areaPoints}"></polygon>`);
-      parts.push(`<polyline class="line" points="${linePoints}"></polyline>`);
-      dates.forEach((date, i) => parts.push(`<circle class="point" cx="${x(i)}" cy="${y(values[i])}" r="3" tabindex="0"><title>${formatDate(date)}: ${fmtNumber(values[i])} records</title></circle>`));
+      if (reference) {
+        parts.push(`<polygon class="reference-area" points="${areaPoints(referencePoints, reference)}"></polygon>`);
+        parts.push(`<polyline class="reference-line" points="${referencePoints}"></polyline>`);
+        reference.dates.forEach((date, i) => parts.push(`<circle class="reference-point" cx="${x(i, reference.dates.length)}" cy="${y(reference.values[i])}" r="3" tabindex="0"><title>Reference, ${formatDate(date)}: ${fmtNumber(reference.values[i])} records</title></circle>`));
+      }
+      parts.push(`<polygon class="area" points="${areaPoints(currentPoints, current)}"></polygon>`);
+      parts.push(`<polyline class="line" points="${currentPoints}"></polyline>`);
+      current.dates.forEach((date, i) => parts.push(`<circle class="point" cx="${x(i, current.dates.length)}" cy="${y(current.values[i])}" r="3" tabindex="0"><title>Selected period, ${formatDate(date)}: ${fmtNumber(current.values[i])} records</title></circle>`));
       parts.push('</svg>');
-      els.trendWrap.innerHTML = parts.join('');
-      els.trendNote.textContent = `${dates.length} active day${dates.length === 1 ? '' : 's'} in selection`;
+      const legend = reference ? '<div class="chart-legend"><span class="legend-item"><span class="legend-swatch"></span>Selected period</span><span class="legend-item"><span class="legend-swatch reference"></span>Reference period</span></div>' : '';
+      els.trendWrap.innerHTML = legend + parts.join('');
+      els.trendNote.textContent = reference ? `Relative day comparison · ${current.dates.length} selected / ${reference.dates.length} reference days` : `${current.dates.length} calendar day${current.dates.length === 1 ? '' : 's'} in selection`;
     }
 
     function renderBars(target, entries, emptyMessage, maxItems = 10) {
@@ -333,8 +400,8 @@
       }).join('')}</div>`;
     }
 
-    function renderCharts(rows) {
-      renderTrend(rows);
+    function renderCharts(rows, bounds, referenceRows = null, referenceBounds = null) {
+      renderTrend(rows, bounds, referenceRows, referenceBounds);
       renderBars(els.formChart, countBy(rows, 'form'), 'No forms in selection', 8);
       renderBars(els.entityChart, countBy(rows, 'entity'), 'No entities in selection', 6);
       renderBars(els.platformChart, countBy(rows, 'platform'), 'No platforms in selection', 8);
@@ -348,41 +415,66 @@
       els.tableNote.textContent = rows.length > MAX_TABLE_ROWS ? `Showing ${fmtNumber(MAX_TABLE_ROWS)} of ${fmtNumber(rows.length)} filtered records, newest first` : `${fmtNumber(rows.length)} filtered record${rows.length === 1 ? '' : 's'}, newest first`;
     }
 
-    function renderSummary(rows) {
-      const activeDays = new Set(rows.map(row => row.date)).size;
-      const organizations = new Set(rows.filter(row => row.organization !== 'Unspecified').map(row => row.organization)).size;
-      const average = activeDays ? rows.length / activeDays : 0;
+    function deltaText(current, reference, digits = 0) {
+      const delta = current - reference;
+      const value = digits ? delta.toFixed(digits) : fmtNumber(delta);
+      const signed = delta > 0 ? `+${value}` : value;
+      const percentage = reference ? ` (${delta > 0 ? '+' : ''}${((delta / reference) * 100).toFixed(1)}%)` : ' (no reference baseline)';
+      return `${signed}${percentage} vs reference`;
+    }
+
+    function renderSummary(rows, referenceRows = null) {
+      const stats = metricStats(rows);
+      const referenceStats = referenceRows ? metricStats(referenceRows) : null;
       const { start, end } = selectedDateBounds();
-      els.metricRecords.textContent = fmtNumber(rows.length);
-      els.metricRecordsDetail.textContent = `${fmtPct(SOURCE_TOTAL ? rows.length / SOURCE_TOTAL : 0)} of source records`;
-      els.metricDays.textContent = fmtNumber(activeDays);
-      els.metricDaysDetail.textContent = start && end ? `${formatDate(start)} through ${formatDate(end)}` : 'Selected date range';
-      els.metricAverage.textContent = average.toFixed(1);
-      els.metricAverageDetail.textContent = 'records per active day';
-      els.metricOrgs.textContent = fmtNumber(organizations);
-      els.metricOrgsDetail.textContent = organizations === 1 ? 'unique normalized label' : 'unique normalized labels';
+      els.metricRecords.textContent = fmtNumber(stats.records);
+      els.metricRecordsDetail.textContent = referenceStats ? deltaText(stats.records, referenceStats.records) : `${fmtPct(SOURCE_TOTAL ? stats.records / SOURCE_TOTAL : 0)} of source records`;
+      els.metricDays.textContent = fmtNumber(stats.activeDays);
+      els.metricDaysDetail.textContent = referenceStats ? deltaText(stats.activeDays, referenceStats.activeDays) : (start && end ? `${formatDate(start)} through ${formatDate(end)}` : 'Selected date range');
+      els.metricAverage.textContent = stats.average.toFixed(1);
+      els.metricAverageDetail.textContent = referenceStats ? deltaText(stats.average, referenceStats.average, 1) : 'records per active day';
+      els.metricOrgs.textContent = fmtNumber(stats.organizations);
+      els.metricOrgsDetail.textContent = referenceStats ? deltaText(stats.organizations, referenceStats.organizations) : (stats.organizations === 1 ? 'unique normalized label' : 'unique normalized labels');
     }
 
     function render() {
       const rows = getFilteredRows();
-      if (rows === null) {
-        els.status.textContent = 'Start date cannot be after end date.';
+      const comparisonEnabled = els.compareMode.checked;
+      const referenceBounds = referenceDateBounds();
+      const referenceRows = comparisonEnabled ? getFilteredRows(referenceBounds) : null;
+      if (rows === null || referenceRows === null) {
+        els.status.textContent = rows === null ? 'Selected period start date cannot be after its end date.' : 'Reference period start date cannot be after its end date.';
         els.status.classList.add('error');
         [els.metricRecords, els.metricDays, els.metricAverage, els.metricOrgs].forEach(el => el.textContent = '—');
         [els.metricRecordsDetail, els.metricDaysDetail, els.metricAverageDetail, els.metricOrgsDetail].forEach(el => el.textContent = 'Correct the date range to continue.');
-        renderCharts([]); renderTable([]); return;
+        renderCharts([], selectedDateBounds()); renderTable([]); return;
       }
       els.status.classList.remove('error');
       const { start, end } = selectedDateBounds();
       const filterText = [start && end ? `${formatDate(start)}–${formatDate(end)}` : 'all dates', els.entity.value || 'all entities', els.form.value || 'all forms', els.search.value.trim() ? `search: “${els.search.value.trim()}”` : ''].filter(Boolean).join(' · ');
-      els.status.textContent = `Showing ${fmtNumber(rows.length)} of ${fmtNumber(SOURCE_TOTAL)} records · ${filterText}`;
-      renderSummary(rows); renderCharts(rows); renderTable(rows);
+      const comparisonText = comparisonEnabled ? ` · Reference: ${formatDate(referenceBounds.start)}–${formatDate(referenceBounds.end)} (${fmtNumber(referenceRows.length)} records)` : '';
+      els.status.textContent = `Showing ${fmtNumber(rows.length)} of ${fmtNumber(SOURCE_TOTAL)} selected-period records · ${filterText}${comparisonText}`;
+      renderSummary(rows, referenceRows); renderCharts(rows, selectedDateBounds(), referenceRows, referenceBounds); renderTable(rows);
     }
 
     function resetFilters() {
       const dates = DATA.map(row => row.date).sort();
       els.start.value = dates[0]; els.end.value = dates[dates.length - 1];
+      els.compareMode.checked = false; els.comparisonGrid.classList.remove('is-visible');
+      els.referenceStart.value = dates[0]; els.referenceEnd.value = dates[dates.length - 1];
       els.entity.value = ''; els.form.value = ''; els.search.value = '';
+      render();
+    }
+
+    function usePrecedingPeriod() {
+      const { start, end } = selectedDateBounds();
+      const days = inclusiveDays(start, end);
+      if (!days) return;
+      const sourceMin = DATA.reduce((min, row) => row.date < min ? row.date : min, DATA[0].date);
+      const referenceEnd = dateOffset(start, -1);
+      const referenceStart = dateOffset(referenceEnd, -(days - 1));
+      els.referenceStart.value = referenceStart < sourceMin ? sourceMin : referenceStart;
+      els.referenceEnd.value = referenceEnd < sourceMin ? sourceMin : referenceEnd;
       render();
     }
 
@@ -399,8 +491,10 @@
       document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
     }
 
-    [els.start, els.end, els.entity, els.form].forEach(el => el.addEventListener('change', render));
+    [els.start, els.end, els.referenceStart, els.referenceEnd, els.entity, els.form].forEach(el => el.addEventListener('change', render));
     els.search.addEventListener('input', render);
+    els.compareMode.addEventListener('change', () => { els.comparisonGrid.classList.toggle('is-visible', els.compareMode.checked); render(); });
+    els.previousPeriodBtn.addEventListener('click', usePrecedingPeriod);
     document.getElementById('resetBtn').addEventListener('click', resetFilters);
     document.getElementById('exportBtn').addEventListener('click', exportCsv);
     initializeFilters(); render();
